@@ -168,11 +168,13 @@ class Task(pl.LightningDataModule):
         num_workers: int = None,
         pin_memory: bool = False,
         augmentation: BaseWaveformTransform = None,
+        bypass_protocol_check=False
     ):
         super().__init__()
 
         # dataset
-        self.protocol, self.has_validation = check_protocol(protocol)
+        if not bypass_protocol_check:
+            self.protocol, self.has_validation = check_protocol(protocol)
 
         # batching
         self.duration = duration
