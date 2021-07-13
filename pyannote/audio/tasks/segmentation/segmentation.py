@@ -110,6 +110,7 @@ class Segmentation(SegmentationTaskMixin, Task):
         loss: Literal["bce", "mse"] = "bce",
         vad_loss: Literal["bce", "mse"] = None,
         metric: Union[Metric, Sequence[Metric], Dict[str, Metric]] = None,
+        bypass_protocol_check=False,
     ):
 
         super().__init__(
@@ -121,6 +122,7 @@ class Segmentation(SegmentationTaskMixin, Task):
             pin_memory=pin_memory,
             augmentation=augmentation,
             metric=metric,
+            bypass_protocol_check=bypass_protocol_check
         )
 
         self.max_num_speakers = max_num_speakers
