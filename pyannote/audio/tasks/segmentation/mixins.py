@@ -177,12 +177,13 @@ class SegmentationTaskMixin:
 
         # use model introspection to predict how many frames it will output
         num_samples = sample["X"].shape[1]
+        num_channels = sample["X"].shape[0]
         num_frames, _ = self.model.introspection(num_samples)
         resolution = duration / num_frames
 
         ##random permute
         #channel_permutation = torch.randperm(7, generator=generator)
-        channel_permutation = torch.randint(low=0, high=8, size = (2,), generator=generator)
+        channel_permutation = torch.randint(low=0, high=num_channels, size = (2,), generator=generator)
         ch1 = sample["X"][channel_permutation[0],:].unsqueeze(0)
         ch2 = sample["X"][channel_permutation[1],:].unsqueeze(0)
         sample["X"] = torch.cat((ch1, ch2))
