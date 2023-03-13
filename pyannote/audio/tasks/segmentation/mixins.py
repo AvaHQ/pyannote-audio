@@ -186,7 +186,8 @@ class SegmentationTaskMixin:
         channel_permutation = torch.randint(low=0, high=num_channels, size = (2,), generator=generator)
         ch1 = sample["X"][channel_permutation[0],:].unsqueeze(0)
         ch2 = sample["X"][channel_permutation[1],:].unsqueeze(0)
-        sample["X"] = torch.cat((ch1, ch2))
+        #sample["X"] = torch.cat((ch1, ch2))
+        sample["X"] = ch1
 
         # discretize annotation, using model resolution
         sample["y"] = file["annotation"].discretize(
@@ -336,12 +337,12 @@ class SegmentationTaskMixin:
         # apply augmentation (only in "train" stage)
         self.augmentation.train(mode=(stage == "train"))
         augmented = self.augmentation(
-            samples=collated_X[:,0:2,:],
+            samples=collated_X[:,0:1,:],
             sample_rate=self.model.hparams.sample_rate,
-            targets=collated_y.unsqueeze(1).repeat(1, 2, 1, 1),
+            targets=collated_y.unsqueeze(1).repeat(1, 1, 1, 1),
         )
 
-        return {"X": augmented.samples, "y": self.adapt_y(augmented.targets[:,1,:,:].squeeze(1))}
+        return {"X": augmented.samples, "y": self.adapt_y(augmented.targets[:,:,:,:].squeeze(1))}
 
     def train__len__(self):
         # Number of training samples in one epoch
