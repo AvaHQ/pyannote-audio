@@ -142,8 +142,8 @@ class SpeakerDiarization(SegmentationTaskMixin, Task):
         metric: Union[Metric, Sequence[Metric], Dict[str, Metric]] = None,
         max_num_speakers: int = None,  # deprecated in favor of `max_speakers_per_chunk``
         loss: Literal["bce", "mse"] = None,  # deprecated
+        bypass_protocol_check=False,
     ):
-
         super().__init__(
             protocol,
             duration=duration,
@@ -153,6 +153,7 @@ class SpeakerDiarization(SegmentationTaskMixin, Task):
             pin_memory=pin_memory,
             augmentation=augmentation,
             metric=metric,
+            bypass_protocol_check=bypass_protocol_check,
         )
 
         if not isinstance(protocol, SpeakerDiarizationProtocol):

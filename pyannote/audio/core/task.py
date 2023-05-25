@@ -207,6 +207,7 @@ class Task(pl.LightningDataModule):
         pin_memory: bool = False,
         augmentation: BaseWaveformTransform = None,
         metric: Union[Metric, Sequence[Metric], Dict[str, Metric]] = None,
+        bypass_protocol_check=False,
     ):
         super().__init__()
 
@@ -215,6 +216,8 @@ class Task(pl.LightningDataModule):
         self.has_validation = checks["has_validation"]
         self.has_scope = checks["has_scope"]
         self.has_classes = checks["has_classes"]
+        if not bypass_protocol_check:
+            self.protocol, self.has_validation = check_protocol(protocol)
 
         # batching
         self.duration = duration
