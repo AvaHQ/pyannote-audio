@@ -38,7 +38,6 @@ import math
 import copy
 import os
 
-'''
 DEVICE = (
     os.environ["device_for_training"]
     if "device_for_training" in os.environ
@@ -46,8 +45,6 @@ DEVICE = (
     if torch.cuda.is_available()
     else "cpu"
 )
-'''
-DEVICE = "cuda"
 
 class DummyOptimizer(torch.optim.Optimizer):
     def __init__(self):
@@ -237,20 +234,43 @@ class PositionwiseFeedForward(nn.Module):
 
 
 class InputPreprocessor(nn.Module):
-    """A SincNet preprocessor
-
-    Args:
-        stride: Stride of the SincNet layer.
+    """An STFT Input Preprocessor
     """
-    def __init__(self, stride=10):
+    def __init__(
+        self, d_model, stft_nfft=511, stft_hop_length=256, stft_win_length=511
+    ):
         super(InputPreprocessor, self).__init__()
-        self.sincnet = SincNet(stride=stride)
-    
+        self.d_model = d_model
+        self.stft_nfft = stft_nfft
+        self.stft_hop_length = stft_hop_length
+        self.stft_win_length = stft_win_length
+        if self.d_model != self.stft_nfft + 1:
+            self.linear = nn.Linear(int((stft_nfft + 1)/2), d_model)
+            self.layernorm = nn.LayerNorm(d_model)
+
     def forward(self, waveform):
-        # the sincnet takes the waveform of shape (batch_size, 1, n_samples) (n_samples of the audio = duration * sampling rate)
-        # and outputs a tensor of shape: (batch_size, n_features, n_frames). We want to reshape this to (batch_size, n_frames, n_features)
-        # because we want the sequence (which are the features in this case) to occupy the second dimension.
-        return self.sincnet(waveform).transpose(1, -1)
+        out = torch.stft(
+            waveform,
+            self.stft_nfft,
+            hop_length=self.stft_hop_length,
+            win_length=self.stft_win_length,
+            return_complex=True,
+        )
+        
+        out = torch.abs(out)
+        out = out.transpose(
+            1, 2
+        )  # transpose to get (batch_size, n_frames, n_frequencies, 2)
+        #out = out.reshape(-1, out.shape[1], out.shape[-2] * out.shape[-1])
+
+        # since the n_features that we get from the fft is = self.stft_nfft + 1, then
+        # double check if this matches the d_model or otherwise there will be a need to
+        # add a Linear layer to project these....
+        if self.d_model != self.stft_nfft + 1:
+            out = self.linear(out)
+            out = self.layernorm(out)
+
+        return out
     
 
 
@@ -277,9 +297,17 @@ class PositionalEncoding(nn.Module):
         return self.dropout(x)
 
 
-def make_model(stride=10, n_output_activations=4, N=6, d_model=512, d_ff=2048, h=8, dropout=0.1):
-    """stride: is for the stride of the SincNet layer that is at the very input of the neural network
-    Helper: Construct a model from hyperparameters."""
+def make_model(
+    stft_nfft=511,
+    stft_hop_length=256,
+    stft_win_length=511,
+    n_output_activations=4,
+    N=6,
+    d_model=256,
+    d_ff=2048,
+    h=64,
+    dropout=0.1,
+):
     c = copy.deepcopy
     attn = MultiHeadedAttention(h, d_model)
     ff = PositionwiseFeedForward(d_model, d_ff, dropout)
@@ -287,7 +315,15 @@ def make_model(stride=10, n_output_activations=4, N=6, d_model=512, d_ff=2048, h
 
     model = EncoderOnlyTransformer(
         Encoder(EncoderLayer(d_model, c(attn), c(ff), dropout), N),
-        nn.Sequential(InputPreprocessor(stride), c(position)),
+        nn.Sequential(
+            InputPreprocessor(
+                d_model,
+                stft_nfft=stft_nfft,
+                stft_hop_length=stft_hop_length,
+                stft_win_length=stft_win_length,
+            ),
+            c(position),
+        ),
         Generator(d_model, n_output_activations),
     )
 
