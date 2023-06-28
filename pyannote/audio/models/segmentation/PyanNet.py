@@ -69,7 +69,7 @@ class PyanNet(Model):
         "monolithic": True,
         "dropout": 0.0,
     }
-    LINEAR_DEFAULTS = {"hidden_size": 128, "num_layers": 2}
+    LINEAR_DEFAULTS = {"hidden_size": 128, "num_layers": 4}
 
     def __init__(
         self,
