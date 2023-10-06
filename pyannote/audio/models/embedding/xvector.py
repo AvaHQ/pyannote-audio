@@ -165,5 +165,6 @@ class XVectorSincNet(Model):
         outputs = self.sincnet(waveforms).squeeze(dim=1)
         for tdnn in self.tdnns:
             outputs = tdnn(outputs)
+        outputs = outputs.repeat(weights.shape[0], 1, 1)
         outputs = self.stats_pool(outputs, weights=weights)
         return self.embedding(outputs)
