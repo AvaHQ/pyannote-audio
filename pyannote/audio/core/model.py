@@ -102,7 +102,7 @@ class Model(pl.LightningModule):
         self.save_hyperparameters("sample_rate", "num_channels")
 
         self.task = task
-        self.audio = Audio(sample_rate=self.hparams.sample_rate, mono="downmix")
+        self.audio = Audio(sample_rate=self.hparams.sample_rate, mono="random")
 
     @property
     def task(self) -> Task:
