@@ -103,7 +103,12 @@ class Powerset(nn.Module):
             self.num_powerset_classes,
         ).float()
 
-        return torch.matmul(hard_powerset, self.mapping)
+        hard_powerset = torch.matmul(hard_powerset, self.mapping)
+        soft_powerset = torch.matmul(torch.softmax(powerset, dim=2), self.mapping)
+        powersets_hs = torch.cat([hard_powerset, soft_powerset], dim=0)
+        
+
+        return powersets_hs
 
     def forward(self, powerset: torch.Tensor) -> torch.Tensor:
         """Alias for `to_multilabel`"""
