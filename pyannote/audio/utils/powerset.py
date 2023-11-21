@@ -101,15 +101,25 @@ class Powerset(nn.Module):
             Predictions in "multi-label" space.
         """
 
-        if soft:
-            powerset_probs = torch.exp(powerset)
-        else:
-            powerset_probs = torch.nn.functional.one_hot(
-                torch.argmax(powerset, dim=-1),
-                self.num_powerset_classes,
-            ).float()
+        # if soft:
+        #     powerset_probs = torch.exp(powerset)
+        # else:
+        #     powerset_probs = torch.nn.functional.one_hot(
+        #         torch.argmax(powerset, dim=-1),
+        #         self.num_powerset_classes,
+        #     ).float()
+            
+        powerset_probs_soft = torch.exp(powerset)   
+        powerset_probs_hard = powerset_probs = torch.nn.functional.one_hot(
+                 torch.argmax(powerset, dim=-1),
+                 self.num_powerset_classes,
+             ).float()
 
-        return torch.matmul(powerset_probs, self.mapping)
+        hard_powerset = torch.matmul(powerset_probs_hard, self.mapping)
+        soft_powerset = torch.matmul(powerset_probs_soft, self.mapping)
+        powersets_hs = torch.cat([hard_powerset, soft_powerset], dim=0)
+
+        return powersets_hs
 
     def forward(self, powerset: torch.Tensor, soft: bool = False) -> torch.Tensor:
         """Alias for `to_multilabel`"""
