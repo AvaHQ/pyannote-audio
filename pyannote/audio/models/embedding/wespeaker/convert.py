@@ -34,8 +34,9 @@ from pyannote.audio.core.task import Problem, Resolution, Specifications
 
 wespeaker_checkpoint_dir = sys.argv[1]  # /path/to/wespeaker_cnceleb-resnet34-LM
 
-wespeaker_checkpoint = Path(wespeaker_checkpoint_dir) / "wespeaker.pt"
+wespeaker_checkpoint = Path(wespeaker_checkpoint_dir) / "voxceleb-resnet293-LM.pt"
 
+print(Path(wespeaker_checkpoint_dir).parts[-1].split("-"))
 depth = Path(wespeaker_checkpoint_dir).parts[-1].split("-")[-2][6:]  # '34'
 Klass = getattr(wespeaker, f"WeSpeakerResNet{depth}")  # WeSpeakerResNet34
 

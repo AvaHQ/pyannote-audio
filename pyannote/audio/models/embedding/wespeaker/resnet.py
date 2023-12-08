@@ -21,7 +21,7 @@ import torch.nn.functional as F
 from einops import rearrange
 
 from pyannote.audio.models.blocks.pooling import StatsPool
-
+from typing import Any
 
 class TSTP(nn.Module):
     """
@@ -35,7 +35,7 @@ class TSTP(nn.Module):
         self.in_dim = in_dim
         self.stats_pool = StatsPool()
 
-    def forward(self, features, weights: torch.Tensor = None):
+    def forward(self, features, weights: torch.Tensor = None, quantize_function: Any = None):
         """
 
         Parameters
@@ -96,11 +96,14 @@ class BasicBlock(nn.Module):
                 ),
                 nn.BatchNorm2d(self.expansion * planes),
             )
+            
+        self.skip_add = nn.quantized.FloatFunctional()
 
     def forward(self, x):
         out = F.relu(self.bn1(self.conv1(x)))
         out = self.bn2(self.conv2(out))
-        out += self.shortcut(x)
+        #out += self.shortcut(x)
+        out = self.skip_add.add(self.shortcut(x), out)
         out = F.relu(out)
         return out
 
@@ -138,7 +141,8 @@ class Bottleneck(nn.Module):
         out = F.relu(self.bn1(self.conv1(x)))
         out = F.relu(self.bn2(self.conv2(out)))
         out = self.bn3(self.conv3(out))
-        out += self.shortcut(x)
+        #out += self.shortcut(x)
+        out = self.skip_add.add(self.shortcut(x), out)
         out = F.relu(out)
         return out
 
@@ -161,6 +165,12 @@ class ResNet(nn.Module):
         self.stats_dim = int(feat_dim / 8) * m_channels * 8
         self.two_emb_layer = two_emb_layer
 
+        self.skip_add = nn.quantized.FloatFunctional()
+        self.quant_1 = torch.quantization.QuantStub()
+        self.dequant_1 = torch.quantization.DeQuantStub()
+        self.quant_2 = torch.quantization.QuantStub()
+        self.dequant_2 = torch.quantization.DeQuantStub()
+         
         self.conv1 = nn.Conv2d(
             1, m_channels, kernel_size=3, stride=1, padding=1, bias=False
         )
@@ -204,6 +214,7 @@ class ResNet(nn.Module):
         -------
         embedding : (batch, embedding_dim) torch.Tensor
         """
+        x = self.quant_1(x)
         x = x.permute(0, 2, 1)  # (B,T,F) => (B,F,T)
 
         x = x.unsqueeze_(1)
@@ -213,7 +224,11 @@ class ResNet(nn.Module):
         out = self.layer3(out)
         out = self.layer4(out)
 
+        out = self.dequant_1(out)
+
         stats = self.pool(out, weights=weights)
+
+        stats = self.quant_2(stats)
 
         embed_a = self.seg_1(stats)
         if self.two_emb_layer:
@@ -222,7 +237,7 @@ class ResNet(nn.Module):
             embed_b = self.seg_2(out)
             return embed_a, embed_b
         else:
-            return torch.tensor(0.0), embed_a
+            return self.dequant_2(torch.tensor(0.0)), self.dequant_2(embed_a)
 
 
 def ResNet18(feat_dim, embed_dim, pooling_func="TSTP", two_emb_layer=True):
