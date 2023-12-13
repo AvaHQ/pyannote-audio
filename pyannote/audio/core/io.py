@@ -184,7 +184,7 @@ class Audio:
     def __init__(self, sample_rate=None, mono=None):
         super().__init__()
         self.sample_rate = sample_rate
-        self.mono = mono
+        self.mono = "random"
 
     def downmix_and_resample(self, waveform: Tensor, sample_rate: int) -> Tensor:
         """Downmix and resample

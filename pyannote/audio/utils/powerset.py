@@ -108,7 +108,7 @@ class Powerset(nn.Module):
         #         torch.argmax(powerset, dim=-1),
         #         self.num_powerset_classes,
         #     ).float()
-            
+    
         powerset_probs_soft = torch.exp(powerset)   
         powerset_probs_hard = powerset_probs = torch.nn.functional.one_hot(
                  torch.argmax(powerset, dim=-1),
