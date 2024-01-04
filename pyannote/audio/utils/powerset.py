@@ -84,7 +84,7 @@ class Powerset(nn.Module):
                 powerset_k += 1
         return cardinality
 
-    def to_multilabel(self, powerset: torch.Tensor, soft: bool = False) -> torch.Tensor:
+    def to_multilabel(self, powerset: torch.Tensor, soft: bool = True) -> torch.Tensor:
         """Convert predictions from powerset to multi-label
 
         Parameter
@@ -101,27 +101,17 @@ class Powerset(nn.Module):
             Predictions in "multi-label" space.
         """
 
-        # if soft:
-        #     powerset_probs = torch.exp(powerset)
-        # else:
-        #     powerset_probs = torch.nn.functional.one_hot(
-        #         torch.argmax(powerset, dim=-1),
-        #         self.num_powerset_classes,
-        #     ).float()
-    
-        powerset_probs_soft = torch.exp(powerset)   
-        powerset_probs_hard = powerset_probs = torch.nn.functional.one_hot(
-                 torch.argmax(powerset, dim=-1),
-                 self.num_powerset_classes,
-             ).float()
+        if soft:
+            powerset_probs = torch.exp(powerset)
+        else:
+            powerset_probs = torch.nn.functional.one_hot(
+                torch.argmax(powerset, dim=-1),
+                self.num_powerset_classes,
+            ).float()
 
-        hard_powerset = torch.matmul(powerset_probs_hard, self.mapping)
-        soft_powerset = torch.matmul(powerset_probs_soft, self.mapping)
-        powersets_hs = torch.cat([hard_powerset, soft_powerset], dim=0)
+        return torch.matmul(powerset_probs, self.mapping)
 
-        return powersets_hs
-
-    def forward(self, powerset: torch.Tensor, soft: bool = False) -> torch.Tensor:
+    def forward(self, powerset: torch.Tensor, soft: bool = True) -> torch.Tensor:
         """Alias for `to_multilabel`"""
         return self.to_multilabel(powerset, soft=soft)
 
