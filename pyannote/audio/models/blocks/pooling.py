@@ -118,7 +118,8 @@ class StatsPool(nn.Module):
             warnings.warn(
                 f"Mismatch between frames ({num_frames}) and weights ({num_weights}) numbers."
             )
-            weights = F.interpolate(weights, size=num_frames, mode="nearest")
+            #weights = F.interpolate(weights, size=num_frames, mode="nearest")
+            weights = F.interpolate(weights, size=num_frames, mode="linear", align_corners=False)
 
         output = rearrange(
             torch.vmap(self._pool, in_dims=(None, 1))(sequences, weights),
