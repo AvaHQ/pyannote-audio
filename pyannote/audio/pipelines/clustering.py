@@ -97,7 +97,7 @@ class BaseClustering(Pipeline):
         speaker_idx : (num_embeddings, ) array
         """
 
-        chunk_idx, speaker_idx = np.where(~np.any(np.isnan(embeddings), axis=2))
+        chunk_idx, speaker_idx = np.where(~np.any(np.isnan(embeddings), axis=2) & (np.sum(segmentations, axis=1) > self.offline_rho_update) )
 
         # sample max_num_embeddings embeddings
         num_embeddings = len(chunk_idx)
@@ -296,6 +296,7 @@ class AgglomerativeClustering(BaseClustering):
         metric: str = "cosine",
         max_num_embeddings: int = np.inf,
         constrained_assignment: bool = False,
+        offline_rho_update: int = 1
     ):
         super().__init__(
             metric=metric,
@@ -310,7 +311,8 @@ class AgglomerativeClustering(BaseClustering):
 
         # minimum cluster size
         self.min_cluster_size = Integer(1, 20)
-
+        self.offline_rho_update = offline_rho_update
+        
     def cluster(
         self,
         embeddings: np.ndarray,
