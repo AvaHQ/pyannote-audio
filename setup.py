@@ -40,7 +40,7 @@ with open(version_path, mode="w", encoding="utf-8") as f:
 
 if __name__ == "__main__":
     setup(
-        name="pyannote.audio",
+        name="ava.pyannote.audio",
         namespace_packages=["pyannote"],
         version=version,
         packages=find_packages(),
