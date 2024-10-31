@@ -84,7 +84,7 @@ class Powerset(nn.Module):
                 powerset_k += 1
         return cardinality
 
-    def to_multilabel(self, powerset: torch.Tensor, soft: bool = True) -> torch.Tensor:
+    def to_multilabel(self, powerset: torch.Tensor, soft: bool = False) -> torch.Tensor:
         """Convert predictions from powerset to multi-label
 
         Parameter
