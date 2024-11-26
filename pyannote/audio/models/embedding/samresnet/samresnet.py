@@ -41,7 +41,8 @@ class ASP(nn.Module):
 
     def forward(self, x, weights):
         
-        weights = weights.unsqueeze(dim=1)
+        if weights.dim() < 3:
+            weights = weights.unsqueeze(dim=1)
 
         _, _, _, num_frames = x.shape
         _, _, num_weights = weights.shape
@@ -57,12 +58,16 @@ class ASP(nn.Module):
         #mean = torch.sum(sequences * weights, dim=2) / v1
 
         x = x.reshape(x.size()[0], -1, x.size()[-1])
-        x = (x*weights).squeeze(dim=1)
+        #x = (x*weights).squeeze(dim=1)
+        x = (x[:,None,:,:]*weights[:,:,None,:])
+        x = x.reshape(-1, x.size()[2], x.size()[3])
+        
         w = self.attention(x)
         mu = torch.sum(x * w, dim=2)
         sg = torch.sqrt((torch.sum((x**2) * w, dim=2) - mu**2).clamp(min=1e-5))
         x = torch.cat((mu, sg), 1)
         x = x.view(x.size()[0], -1)
+
         return x
 
 class SimAMBasicBlock(nn.Module):
@@ -100,14 +105,23 @@ class SimAMBasicBlock(nn.Module):
                 ),
                 NormLayer(self.expansion * planes),
             )
+            
+        self.skip_add = nn.quantized.FloatFunctional()
+        self.quant_2 = torch.quantization.QuantStub()
+        self.dequant_2 = torch.quantization.DeQuantStub()
+        
 
     def forward(self, x):
         out = self.relu(self.bn1(self.conv1(x)))
         out = self.bn2(self.conv2(out))
+        out = self.dequant_2(out)
         out = self.SimAM(out)
-        out += self.downsample(x)
+        out = self.quant_2(out)
+        #out += self.downsample(x)
+        out = self.skip_add.add(self.downsample(x), out)
         out = self.relu(out)
         return out
+
 
     def SimAM(self, X, lambda_p=1e-4):
         n = X.shape[2] * X.shape[3] - 1
@@ -122,6 +136,9 @@ class ResNet(nn.Module):
         self, in_planes, block, num_blocks, in_ch=1, **kwargs
     ):
         super(ResNet, self).__init__()
+        self.quant_1 = torch.quantization.QuantStub()
+        self.dequant_1 = torch.quantization.DeQuantStub()
+        
         self.in_planes = in_planes
         self.NormLayer = nn.BatchNorm2d
         self.ConvLayer = nn.Conv2d
@@ -162,11 +179,13 @@ class ResNet(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
+        x = self.quant_1(x)
         x = self.relu(self.bn1(self.conv1(x)))
         x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)
         x = self.layer4(x)
+        x = self.dequant_1(x)
         return x
 
 
@@ -185,6 +204,10 @@ class SimAM_ResNet34_ASP(nn.Module):
         self.pooling = ASP(in_planes, acoustic_dim)
         self.bottleneck = nn.Linear(self.pooling.out_dim, embed_dim)
         self.drop = nn.Dropout(dropout) if dropout else None
+        
+        self.quant_3 = torch.quantization.QuantStub()
+        self.dequant_3 = torch.quantization.DeQuantStub()
+        
 
     def forward(self, x, weights: torch.Tensor = None):
         x = x.permute(0, 2, 1)
@@ -192,8 +215,9 @@ class SimAM_ResNet34_ASP(nn.Module):
         x = self.pooling(x, weights)
         if self.drop:
             x = self.drop(x)
+        x = self.quant_3(x)
         x = self.bottleneck(x)
-        return x
+        return self.dequant_3(x)
 
 
 class SimAM_ResNet100_ASP(nn.Module):

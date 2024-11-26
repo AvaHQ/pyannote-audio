@@ -27,6 +27,7 @@ from .wespeaker import (
     WeSpeakerResNet221,
     WeSpeakerResNet293,
 )
+from .samresnet import (SamResNet34)
 from .xvector import XVectorMFCC, XVectorSincNet
 
 __all__ = [
